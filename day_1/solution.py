@@ -7,7 +7,7 @@ podium = {
 }
 counter = 0 
 
-def update_podium(npodium:dict, new_rank:int, new_score:int,) -> dict:
+def update_podium(podium:dict, new_rank:int, new_score:int,) -> dict:
      for i in range(len(podium.keys()), new_rank, -1):
           podium[i] = podium[i-1]
      podium[new_rank] = new_score
