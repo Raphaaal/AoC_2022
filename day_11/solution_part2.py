@@ -1,23 +1,61 @@
 # cat input.txt | awk 'BEGIN {RS="";FS="\n"}; {split($2, items, ":")} ; {split($3, op, "=")} ; {split($4, test, "by")} ; {split($5, true, "monkey")} ; {split($6, false, "monkey")} ; {print substr($1, 8, 1) ";" items[2] ";" op[2] ";" test[2] ";" true[2] ";" false[2]}' > input_awked.txt
 
 from pprint import pprint
+import copy
 
 
 filename = "input_awked.txt"
-monkeys = {}
 
+# Create the items
+items = {}
 with open(filename) as f:
+
+     accumulator = 0
+
      for line in f:
 
           # Parse
           monkey = line.strip().split(";")
+
+          # Create items
+          for i in monkey[1].split(","):
+               items[accumulator] = {
+                    "id": accumulator,
+                    "start": int(i),
+                    "current": int(i),
+                    "remainders": {},
+                    "visited": {},
+                    "old": [],
+                    } 
+               accumulator += 1
+
+# Create the monkeys
+monkeys = {}
+with open(filename) as f:
+    
+     accumulator = 0
+
+     for line in f:
+
+          # Parse
+          monkey = line.strip().split(";")
+
+          # Create monkeys
           monkeys[int(monkey[0])] = {
-               "items": [int(i) for i in monkey[1].split(",")],
+               "id": int(monkey[0]),
+               "items": [
+                    i + accumulator 
+                    for i 
+                    in range(len(monkey[1].split(",")))
+                    ],
                "op": "lambda old :" + monkey[2],
+               "type_op": monkey[2].split(" ")[2],
+               "factor_op": monkey[2].split(" ")[3],
                "test": int(monkey[3]),
                "true": int(monkey[4]),
                "false": int(monkey[5]),
           }
+          accumulator += len(monkeys[int(monkey[0])]["items"])
 
 counters = {
      k:0 
@@ -25,55 +63,81 @@ counters = {
      in monkeys.keys()
      }
 
-divisors = [v["test"] for v in monkeys.values()]
-print(divisors)
+print(monkeys)
 
 for i in range(1, 21):
 
-     for idx, data in monkeys.items():
+     for idx, monkey in monkeys.items():
 
-          for item in data["items"]:
+          while len(monkey["items"]) > 0:
+
+               item_id = monkey["items"].pop(0)
+               item = items[item_id]
+
+               # Update visit history
+               for k in monkeys.keys():
+                    if k in items[item_id]["visited"]:
+                         items[item_id]["visited"][k].append(idx)
+                    else:
+                         items[item_id]["visited"][k] = [idx]
 
                # Count items inspected
                counters[idx] += 1
 
                # Evaluate worry level
-               worry = eval(data["op"])(item)
-               worry = int(worry / 3)
+               worry = eval(monkey["op"])(item["current"])
+
+               # Update item
+               if monkey["factor_op"] == "old":
+                    items[item_id]["old"].append(item["current"])
+               items[item_id]["current"] = worry
+
+               # Worry level reduce trick
+               trick = item["start"]
+               old_idx = 0
+               for visit in item["visited"][idx]:
+                    visited = monkeys[visit]
+                    if visited["type_op"] == "+":
+                         trick += int(visited["factor_op"]) % monkey["test"]
+                    if visited["type_op"] == "*":
+                         if visited["factor_op"] == "old":
+                              trick *= item["old"][old_idx] % monkey["test"]
+                              old_idx += 1
+                         else:
+                              trick *= int(visited["factor_op"]) % monkey["test"]                               
+               # print()
+               # print(item_id)
+               # print(idx)
+               # print(item["visited"][idx])
+               
+               # DEBUG
+               if (worry % monkey["test"]) != (trick % monkey["test"]):
+                    print()
+                    print("DEBUGGGGGGGGGGGGGGGGGGGGGGGGGGG")
+                    print(item_id)
+                    print(idx)
+                    print(item["visited"][idx])
+
+
+               # Record item history
+               for k, v in monkeys.items():
+                    items[item_id]["remainders"][k] = (worry % v["test"])
+
 
                # Throw to another monkey
-               test = worry % data["test"] == 0 
+               # test = ((worry % monkey["test"]) == 0)
+               test = ((trick % monkey["test"]) == 0)
 
-               if test:
-                    # if idx == 0:
-                    #      if not (worry % 13 == 0):
-                    #           worry = worry % 13
-                    # if idx == 1:
-                    #      if not (worry % 13 == 0):
-                    #           worry = worry % 13
-                    # if idx == 3:
-                    #      if (
-                    #           ((worry*19) % 23 == 0) and
-                    #           not ((worry*19) % 13 == 0)
-                    #           ):
-                    #                worry = (worry*19) % 13
-
-                    monkeys[data["true"]]["items"].extend([worry])
-
+               if test: 
+                    # items[item_id]["visited"][idx] = [idx]
+                    monkeys[monkey["true"]]["items"].append(item_id)
                else:
+                    monkeys[monkey["false"]]["items"].append(item_id)
 
-                    monkeys[data["false"]]["items"].extend([worry])
 
-               # Update current list of items
-               if len(data["items"]) > 1:
-                    data["items"] = data["items"][1:]
-               else:
-                    data["items"] = []
-
-     if i in [1, 20, 1000, 2000, 3000, 4000, 5000, 10000]:
+     if i in [1, 20, 100, 1000, 2000, 3000, 4000, 5000, 10000]:
           print(i)
           pprint(counters)
-          # pprint(monkeys)
 
 # Compute monkey business
 counts = list(counters.values())
@@ -82,3 +146,5 @@ counts = [c for c in counts if c != top_1]
 top_2 = max(counts)
 
 print(top_1 * top_2)
+
+# pprint(items)
