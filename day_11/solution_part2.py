@@ -6,38 +6,28 @@ import copy
 
 filename = "input_awked.txt"
 
-# Create the items
+# Parse the items
 items = {}
 with open(filename) as f:
-
      accumulator = 0
-
      for line in f:
-
-          # Parse
           monkey = line.strip().split(";")
 
           # Create items
           for i in monkey[1].split(","):
                items[accumulator] = {
                     "id": accumulator,
-                    "start": int(i),
-                    "current": int(i),
-                    "remainders": {},
+                    "value": int(i),
                     "visited": {},
                     "old": [],
                     } 
                accumulator += 1
 
-# Create the monkeys
+# Parse the monkeys
 monkeys = {}
 with open(filename) as f:
-    
      accumulator = 0
-
      for line in f:
-
-          # Parse
           monkey = line.strip().split(";")
 
           # Create monkeys
@@ -57,126 +47,45 @@ with open(filename) as f:
           }
           accumulator += len(monkeys[int(monkey[0])]["items"])
 
-
 # Initialize the items
-for m, monkey in monkeys.items():
-
-     for i in monkey["items"]:
-
-          for k in monkeys.keys():          
-               # items[i]["visited"][k] = [m]
-               items[i]["visited"][k] = []
-               items[i]["counts"] = 0
+for i in items.values():
+     val = i["value"]
+     i["value"] = {k: val for k in monkeys.keys()}
 
 # Initialize counters for monkey business
-counters = {
-     k:0 
-     for k 
-     in monkeys.keys()
-     }
+counters = {k:0 for k in monkeys.keys()}
 
 
-def get_trick(item, m_id):
-     trick = item["start"]
-     old_idx = 0
-
-     for visit in item["visited"][m_id]:
-          visited = monkeys[visit]
-          if visited["type_op"] == "+":
-               trick += int(visited["factor_op"]) % monkeys[m_id]["test"]
-          if visited["type_op"] == "*":
-               if visited["factor_op"] == "old":
-                    trick *= item["old"][old_idx][m_id] % monkeys[m_id]["test"]
-                    old_idx += 1
-               else:
-                    trick *= int(visited["factor_op"]) % monkeys[m_id]["test"] 
-     # print(trick)
-     return trick
-
-
-
-for i in range(1, 10001):
+# Run
+for iteration in range(1, 10001):
 
      for idx, monkey in monkeys.items():
 
           while len(monkey["items"]) > 0:
 
-               item_id = monkey["items"].pop(0)
-               item = items[item_id]
-               item["counts"] += 1
+               # Get item props
+               i = monkey["items"].pop(0)
+               item = items[i]
 
-               # Count items inspected
+               # Increment items inspected
                counters[idx] += 1
 
-               # Standard way: evaluate worry level
-               # worry = eval(monkey["op"])(item["current"])
-               # item["current"] = worry
-
-               # Trick way: evaluate worry level in a faster way
-               trick = item["start"]
-               old_idx = 0
-               # Previously visited
-               for visit in item["visited"][idx]:
-                    visited = monkeys[visit]
-                    if visited["type_op"] == "+":
-                         trick += int(visited["factor_op"]) % monkey["test"]
-                    if visited["type_op"] == "*":
-                         if visited["factor_op"] == "old":
-                              trick *= item["old"][old_idx][idx] % monkey["test"]
-                              old_idx += 1
-                         else:
-                              trick *= int(visited["factor_op"]) % monkey["test"] 
-               # Current monkey
-               if monkey["type_op"] == "+":
-                    trick += int(monkey["factor_op"]) % monkey["test"]
-               if monkey["type_op"] == "*":
-                    if monkey["factor_op"] == "old":
-                         item_copy = copy.deepcopy(item)
-                         item["old"].append({
-                              k: get_trick(item_copy, k)
-                              for k
-                              in monkeys.keys()
-                              })
-                         trick *= item["old"][old_idx][idx] % monkey["test"]
-                         old_idx += 1
-                    else:
-                         trick *= int(monkey["factor_op"]) % monkey["test"] 
-
-
-               if item["counts"] > 0:
-                    # Update item visit history
-                    for k in monkeys.keys():
-                         if k in item["visited"]:
-                              item["visited"][k].append(idx)
-                         else:
-                              item["visited"][k] = [idx]
-               
-               # # DEBUG
-               # if (worry % monkey["test"]) != (trick % monkey["test"]):
-               #      print()
-               #      print("DEBUG")
-               #      print(idx)
-               #      print()
+               # Evaluate and reduce worry level
+               for k, m in monkeys.items():
+                    worry = eval(monkey["op"])(item["value"][k])
+                    item["value"][k] = worry % m["test"]
 
                # Throw to another monkey
-               test = ((trick % monkey["test"]) == 0)
-
+               test = (item["value"][idx] % monkey["test"]) == 0
                if test: 
-                    monkeys[monkey["true"]]["items"].append(item_id)
+                    monkeys[monkey["true"]]["items"].append(i)
                else:
-                    monkeys[monkey["false"]]["items"].append(item_id)
+                    monkeys[monkey["false"]]["items"].append(i)
 
-
-     if i in [1, 20, 1000, 2000, 3000, 4000, 5000, 10000]:
-          print(i)
-          pprint(counters)
 
 # Compute monkey business
 counts = list(counters.values())
 top_1 = max(counts)
 counts = [c for c in counts if c != top_1]
 top_2 = max(counts)
-
 print(top_1 * top_2)
-
-# pprint(items)
