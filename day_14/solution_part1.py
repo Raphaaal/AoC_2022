@@ -1,6 +1,7 @@
 from pprint import pprint
 from typing import Callable
 import pdb
+import copy
 
 
 FILENAME = "input.txt"
@@ -31,7 +32,7 @@ with open(FILENAME) as f:
 		# Encode walls
 		prev = False
 		for c in coords :
-			positions.append({"i": c[0], "j": c[1]})
+			positions.append({"i": c[0], "j": c[1], "type": "wall"})
 
 			if prev:
 				if prev[0] != c[0]:
@@ -40,14 +41,14 @@ with open(FILENAME) as f:
 					if prev[0] > c[0]:
 						order = -1
 					for step in range(prev[0], c[0], order):
-						positions.append({"i": step, "j": c[1]})
+						positions.append({"i": step, "j": c[1], "type": "wall"})
 				else:
 					# Build column
 					order = 1
 					if prev[1] > c[1]:
 						order = -1
 					for step in range(prev[1], c[1], order):
-						positions.append({"i": c[0], "j": step})
+						positions.append({"i": c[0], "j": step, "type": "wall"})
 			prev = c
 
 # Remove duplicates
@@ -58,8 +59,8 @@ borders = {
 	"i_min": min([p["i"] for p in positions]),
 	"i_max": max([p["i"] for p in positions]),
 	"j_max": max([p["j"] for p in positions]),
+	"j_min": 0,
 }
-
 
 def out_of_border(sand:dict, borders:dict):
 	if (
@@ -118,16 +119,24 @@ def pour(sand: dict, positions:list, borders:dict):
 			sand["j"] += 1
 
 	# Add new position once sand is stable
-	positions.append(sand)
+	positions.insert(0, sand)
+
 	return True, positions
 
 # Make sand pour
 sand_units = 0
 while True:
-	sand = {"i": 500, "j": 0}
+	sand = {"i": 500, "j": 0, "type": "sand"}
 	keep_pouring, positions = pour(sand, positions, borders)
 	if keep_pouring:
 		sand_units += 1
 	else: 
 		break
+
 print(sand_units)
+
+
+
+
+
+
